@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>WanderingEarth</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden
+    }
+
+    #canvas {
+      background-image: antiquewhite;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    const canvas = document.getElementById('canvas');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+
+    // 图源
+    // 背景
+    const imgGalaxy = new Image();
+    imgGalaxy.src = './image/solarsystem.png';
+
+    // 地球
+    const imgEarth = new Image();
+    imgEarth.src = './image/earth1.png';
+
+    // 行星对象
+    class Planet {
+      constructor(img, r) {
+        this.img = img;
+        this.r = r;
+        this.x = 0;
+        this.y = 0;
+      }
+      draw(ctx) {
+        const { img, x, y, r} = this;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(
+          x, y,
+          r,
+          0, Math.PI * 2
+        );
+        ctx.drawImage(
+          img,
+          x-25, y-25
+        )
+        // 限制填充画布大小
+        ctx.clip();
+        ctx.restore();
+      }
+    }
+
+    // 记录时间
+    let time = null;
+    // 行星速度(像素/毫秒)
+    let vy = 0;
+    // 初始行星重力
+    let gravity = 0;
+    // 行星弹性
+    let bounce = 0.7;
+
+    // 实例化行星
+    const planet = new Planet(imgEarth, 25);
+    planet.x = 938;
+    // 设置反弹边界
+    const bottom = canvas.height - planet.r
+    planet.y = 410;
+
+    // 实现拖拽
+    // 鼠标位置-行星位置
+    let subPos = null;
+    // 监测鼠标是否在行星中
+    let isDrag = false;
+
+    canvas.addEventListener('mousedown', mousedownFn);
+    canvas.addEventListener('mousemove', mousemoveFn);
+    canvas.addEventListener('mouseup', mouseupFn);
+
+    // 点击时
+    function mousedownFn(event) {
+      // 鼠标位置
+      const mousePos = getMousePos(event);
+      //  鼠标坐标-行星坐标
+      subPos = {
+        x: mousePos.x - planet.x,
+        y: mousePos.y - planet.y
+      };
+      // 判断鼠标是否在行星中
+      isDrag = isContainPoint(planet, mousePos);
+    }
+
+    // 移动时
+    function mousemoveFn(event) {
+      const mousePos = getMousePos(event);
+      if (isDrag) {
+        planet.x = mousePos.x - subPos.x;
+        planet.y = mousePos.y - subPos.y;
+      }
+    }
+
+    // 鼠标抬起时
+    function mouseupFn() {
+      if (isDrag) {
+        isDrag = false;
+        // 重力加速度
+        gravity = 0.0098;
+        time = new Date();
+      }
+    }
+
+    // 判断点是否在行星中
+    function isContainPoint(obj, mousePos) {
+      // 获取鼠标到圆心的距离
+      const len = Math.sqrt(subPos.x * subPos.x + subPos.y * subPos.y);
+      // 判断鼠标到圆心的距离是否小于r
+      return len < obj.r;
+    }
+
+    // 获取鼠标在canvas中的位置
+    function getMousePos(event) {
+      // 获取鼠标位置
+      const { clientX, clientY } = event;
+      // 获取canvas边界位置
+      const { top, left } = canvas.getBoundingClientRect();
+      // 计算鼠标在canvas中的位置
+      const x = clientX - left;
+      const y = clientY - top;
+      return { x, y };
+    }
+
+    // 动画方法
+    function animate() {
+      // 实际时间差
+      let now = new Date();
+      let diff = now - time;
+      time = now;
+
+      // 加速度
+      vy += gravity;
+
+      // 设置小球位置
+      planet.y += vy * diff;
+
+      // 底部碰撞检测
+      if (planet.y >= bottom) {
+        planet.y = bottom;
+        // 负数 -> 反弹
+        vy *= -bounce;
+      }
+    }
+
+    !(function render() {
+      // 非拖拽状态下实现动画效果
+      !isDrag && animate();
+      // 擦除
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(imgGalaxy, 135, -200, 1280, 960);
+      if (planet.y > bottom) {
+        if (Math.abs(maxY - bottom) < 1) {
+          /*当小球极值距离地面小于一个像素时，不再请求动画帧*/
+          window.cancelAnimationFrame(frame);
+          return;
+        }
+        planet.y = bottom;
+        vy *= -bounce;
+      } else if (tempVy * vy < 0) {
+        /*记录极值*/
+        maxY = planet.y;
+        console.log(maxY);
+      }
+      planet.draw(ctx);
+      requestAnimationFrame(render);
+      console.log("运行中");
+    })()
+
+  </script>
+</body>
+
+</html>
